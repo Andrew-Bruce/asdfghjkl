@@ -31,7 +31,7 @@ fn rgb_to_hsv(rgb: (i32, i32, i32)) -> (i32, i32, i32){
 
 fn pixel_green_enough(rgba_slice: &[u8]) -> bool{
     assert!(rgba_slice.len() == 4);
-    
+
     let r: i32 = rgba_slice[0] as i32;
     let g: i32 = rgba_slice[1] as i32;
     let b: i32 = rgba_slice[2] as i32;
@@ -39,7 +39,54 @@ fn pixel_green_enough(rgba_slice: &[u8]) -> bool{
     let (h, _s, _v) = rgb_to_hsv((r, g, b));
 
     let how_far_from_green:i32 = (h - 120).abs();
-    return how_far_from_green < 50;
+    return how_far_from_green < 80;
+}
+
+fn game_of_life_mask(mask: &Vec2D<bool>) -> Vec2D<bool>{
+    let mut output: Vec2D<bool> = Vec2D::new(vec![false; (mask.w*mask.h) as usize], mask.h, mask.w);
+    for y in 0..mask.h {
+        for x in 0..mask.w {
+            let mut num_neighbors: u32 = 0;
+            for dy in -1i32..=1i32 {
+                for dx in -1i32..=1i32{
+                    let rx: i32 = x as i32 + dx;
+                    let ry: i32 = y as i32 + dy;
+                    if (rx > 0) && (ry > 0) {
+                        if mask.check_in_range(ry as u32, rx as u32) {
+                            if *mask.index(ry as u32, rx as u32) {
+                                num_neighbors += 1;
+                            }
+                        }
+                    }
+                }
+            }
+            output.index_set_val(y, x, num_neighbors >= 4);
+        }
+    }
+    return output;
+}
+
+fn bloat_mask(mask: &Vec2D<bool>) -> Vec2D<bool>{
+    let mut output: Vec2D<bool> = Vec2D::new(vec![false; (mask.w*mask.h) as usize], mask.h, mask.w);
+    for y in 0..mask.h {
+        for x in 0..mask.w {
+            'check_neighbors: for dy in -1i32..1i32 {
+                for dx in -1i32..1i32{
+                    let rx: i32 = x as i32 + dx;
+                    let ry: i32 = y as i32 + dy;
+                    if (rx > 0) && (ry > 0) {
+                        if mask.check_in_range(ry as u32, rx as u32) {
+                            if *mask.index(ry as u32, rx as u32) {
+                                output.index_set_val(y, x, true);
+                                break 'check_neighbors;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return output;
 }
 
 fn plant_thresholding_mask(rgba_bytes: &Vec3D<u8>) -> Vec2D<bool>{
@@ -47,28 +94,32 @@ fn plant_thresholding_mask(rgba_bytes: &Vec3D<u8>) -> Vec2D<bool>{
 
     for y in 0..rgba_bytes.h{
         for x in 0..rgba_bytes.w{
-           if pixel_green_enough(rgba_bytes.index_2d(y, x)){
+            if pixel_green_enough(rgba_bytes.index_2d(y, x)){
                 mask.index_set_val(y, x, true);
-           }
+            }
         }
     }
 
     return mask;
 }
 
+
+
 fn main(){
     let mut image_data: Vec3D<u8> = image_reader::read_image_into_vec("plant4.jpg");
-    
-    let green_mask: Vec2D<bool> = plant_thresholding_mask(&image_data);
+
+    let green_mask  : Vec2D<bool> = plant_thresholding_mask(&image_data); 
+    let asdf        : Vec2D<bool> = bloat_mask(&green_mask);
+    let bloated_mask: Vec2D<bool> = game_of_life_mask(&asdf);
+    //let bloated_mask: Vec2D<bool> = plant_thresholding_mask(&image_data); 
 
     for y in 0..image_data.h {
         for x in 0..image_data.w {
-            if !*green_mask.index(y, x) {
-                image_data.index_set_val(y, x, 0, 0);
+            if !*bloated_mask.index(y, x) {
+                image_data.index_set_val(y, x, 0, 255);
                 image_data.index_set_val(y, x, 1, 0);
-                image_data.index_set_val(y, x, 2, 0);
+                image_data.index_set_val(y, x, 2, 255);
             }
-
         }
     }
 

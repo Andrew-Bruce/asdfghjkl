@@ -61,7 +61,7 @@ impl<T> Vec2D<T>{
         }
     }
     
-    fn check_in_range(&self, h: u32, w: u32) -> bool{
+    pub fn check_in_range(&self, h: u32, w: u32) -> bool{
         return (h < self.h)
             && (w < self.w);
     }
