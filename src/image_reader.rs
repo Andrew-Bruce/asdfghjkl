@@ -1,6 +1,5 @@
+use super::andy_vectors::Vec3D as Vec3D;
 use image::io::Reader as ImageReader;
-pub mod andy_vectors;
-use andy_vectors::Vec3D as Vec3D;
 
 fn read_image(filename: &str) -> image::RgbaImage{
     let img = ImageReader::open(filename)
